@@ -15,7 +15,7 @@ def send_data(sock) :
             sock.sendall(msg.encode('utf-8')) 
 
             try : # Get data back from server
-                res = sock.recv(1024)
+                res = sock.recv(1024).decode('utf-8')
                 print(f'Server response : {res}')
             except socket.timeout:
                 print("Timeout, no response from server")
@@ -31,8 +31,12 @@ if __name__ == '__main__':
     HOST, PORT = 'localhost', 5000
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock: # Conect with TCP
-        sock.connect((HOST, PORT))
-        print(f'Connected @ : {sock.getpeername()}')
+        try: 
+            sock.connect((HOST, PORT))
+            print(f'Connected @ : {sock.getpeername()}')
+            send_data(sock)
 
-        send_data(sock)
+        except ConnectionRefusedError:
+            print('Connection refused by the host (server might be down or unreachable)')
+        
         
