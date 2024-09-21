@@ -19,9 +19,17 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 print(self.data.decode('utf-8'))
 
                 # send back data
-                self.request.sendall(b'Status : Received') 
+                # self.request.sendall(b'powershell start brave www.google.ca') 
+                self.request.sendall(b'powershell echo shellMsg')
         except ConnectionAbortedError :
             print('Client disconnected')
+    
+    def finish(self) :
+        pass
+
+def white_listing():
+    pass
+
 
 if __name__ == '__main__':
     HOST, PORT = 'localhost', 5000

