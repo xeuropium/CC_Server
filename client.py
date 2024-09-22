@@ -1,12 +1,22 @@
 import socket
 import subprocess
+import select
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
 
-def send_data(sock) :
-    print('Enter exit to terminate the communication')
 
-    try :
-        while True :
+def is_socket_closed(sock: socket.socket) -> bool:
+    readable, _, _ = select.select([sock], [], [], 0)
+    return readable
+
+
+def send_data(sock: socket.socket):
+    if is_socket_closed(sock):
+        print('Connection aborted (not in the whitelist)')
+        return
+    
+    try:
+        while True:
+            print('Enter exit to terminate the communication')
             msg = input('> ') # Takes the user input
             if msg == 'exit':
                 break
@@ -14,7 +24,7 @@ def send_data(sock) :
             # Send data to the server
             sock.sendall(msg.encode('utf-8')) 
 
-            try : # Get data back from server
+            try: # Get data back from server
                 res = sock.recv(1024).decode('utf-8')
                 print(f'Server response : {res}')
                 command = res.split(' ')

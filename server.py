@@ -8,14 +8,18 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     override the handle() method to implement communication to the
     client.
     """
+
     def setup(self) :
-        print(f'New client connected : {self.client_address}')
+        print(f'New client connection : {self.client_address}')
+
 
     def handle(self):
+        if (self.client_address[0] not in WHITE_LIST) :
+            print('IP not in the WhiteList')
+            return
         try :
             while True : # Keep the connection Open
                 self.data = self.request.recv(1024).strip() # buff size 1024
-                # print(f'Received from {self.client_address[0]}')
                 print(self.data.decode('utf-8'))
 
                 # send back data
@@ -24,15 +28,20 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         except ConnectionAbortedError :
             print('Client disconnected')
     
+
     def finish(self) :
         pass
 
-def white_listing():
-    pass
+
+def read_white_list():
+    with open('white_list.txt', 'r') as file:
+        whitelist = {line.strip() for line in file if line.strip()}
+    return whitelist
 
 
 if __name__ == '__main__':
     HOST, PORT = 'localhost', 5000
+    WHITE_LIST = read_white_list()
     
     try :
         with socketserver.TCPServer((HOST, PORT), MyTCPHandler) as server : 
