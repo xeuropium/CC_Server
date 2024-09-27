@@ -29,6 +29,8 @@ def send_data(sock: socket.socket):
 
     except KeyboardInterrupt:
         print('Comms terminated')
+    except ConnectionResetError:
+        print('The server closed the connection')
     finally:
         sock.close()
 

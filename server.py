@@ -37,7 +37,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 # They can both communicate in a continuous Stream
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     """This server will handle each request in a new thread."""
-    pass
+    # This ensures that the server can be interrupted and shut down even if there are active client connections.
+    daemon_threads = True
+    
 
 def read_white_list():
     with open('white_list.txt', 'r') as file:
