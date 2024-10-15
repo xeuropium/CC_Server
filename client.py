@@ -1,6 +1,7 @@
 import socket
 import subprocess
 import select
+import threading
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
 
 
@@ -23,8 +24,6 @@ def send_data(sock: socket.socket):
             # Get data back from server
             get_data(sock)
 
-    except KeyboardInterrupt:
-        print('Comms terminated')
     except ConnectionResetError:
         print('The server closed the connection')
     finally:
@@ -63,8 +62,18 @@ if __name__ == '__main__':
         try: 
             sock.connect((HOST, PORT))
             print(f'Connected @ : {sock.getpeername()}')
-            send_data(sock)
 
+            sock_thread = threading.Thread(target=send_data, args=(sock,))
+            sock_thread.daemon = True  # Set the thread as a daemon so it doesn't block exit
+            sock_thread.start()
+
+            try:
+                while sock_thread.is_alive():
+                    sock_thread.join(timeout=1)  # Unblocking the main Thread
+            except KeyboardInterrupt:
+                print('Client terminated by user (Ctrl+C)')
+                sock.close()
+            
         except ConnectionRefusedError:
             print('Connection refused by the host (server might be down or unreachable)')
         

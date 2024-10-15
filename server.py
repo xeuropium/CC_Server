@@ -135,7 +135,7 @@ if __name__ == '__main__':
             print('--------------------------------------------\n')
 
             # Run the server in a separate thread to control it from the main thread
-            server_thread = threading.Thread(target=server.serve_forever) # 'Handle one request at a time until shutdown. (CTL+C)'
+            server_thread = threading.Thread(target=server.serve_forever) # In a loop, Handling one request at a time until shutdown. (CTL+C) 
             server_thread.daemon = True
             server_thread.start()
 
