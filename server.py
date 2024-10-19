@@ -1,12 +1,11 @@
 import socketserver
-# Example used at https://docs.python.org/3/library/socketserver.html
-
 import threading
-# Threads is used to run multiple I/O-bound tasks simultaneously, here, requests
-# https://docs.python.org/3/library/threading.html 
 import re
 
-# Global dic to track connected and their socket
+# SockerServer example used at https://docs.python.org/3/library/socketserver.html
+# Threads is used to run multiple I/O-bound tasks simultaneously, here, requests
+
+# Global dic to track connected clients and their sockets
 # Needs to be refactored, Explore the Reactor Pattern in the future
 connected_clients = {}
 
@@ -19,18 +18,16 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     """
 
     def setup(self) :
-        print(f'New client connection : {self.client_address}')
+        print(f'\nNew client connection : {self.client_address}')
         connected_clients[self.client_address] = self.request
-
-        print(f'Threads alive : {threading.active_count()}')
-
+        # print(f'Threads alive : {threading.active_count()}') # Debug purpose
 
     def handle(self):
         if (self.client_address[0] not in WHITE_LIST) :
             print('IP not in the WhiteList')
             return
         try :
-            while True : # Keep the connection Open, delete the loop when only the server will send commands 
+            while True : # Keep the connection Open
                 self.data = self.request.recv(1024).strip() # buff size 1024
                 print(f'{self.client_address} > ' + self.data.decode('utf-8'))
 
@@ -44,7 +41,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     
 
     def finish(self) :
-        print(f'Connection closed for: {self.client_address}')
+        print(f'\nConnection closed for: {self.client_address}')
         del connected_clients[self.client_address]
 
 # The threaded version let multiple clients connect at the same time.
@@ -131,9 +128,6 @@ def get_SC(client):
 # Do some verification on the user input
 # PRINT EXEMPLES
 # shell 127.0.0.1@57693 powershell ls -n
-
-# self.request.sendall(b'powershell start brave www.google.ca') 
-# self.request.sendall(b'powershell ls -n')
 def send_shell(msg: str):
     client_ip, client_port = msg.split(' ')[1].split("@")
     client_port = int(client_port)

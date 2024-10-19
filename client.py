@@ -2,7 +2,6 @@ import socket
 import subprocess
 import select
 import threading
-import sys
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
 
 
@@ -80,8 +79,6 @@ if __name__ == '__main__':
             sock_thread = threading.Thread(target=listen_for_commands, args=(sock,))
             sock_thread.daemon = True  # Set the thread as a daemon so it doesn't block exit
             sock_thread.start()
-
-            print(threading.active_count())
 
             try:
                 while sock_thread.is_alive():
