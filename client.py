@@ -61,9 +61,9 @@ def exec_command(command):
 # REFACTOR : Make the packet size handler before the sending part
 def send_screenshot():
     with mss() as sct:
-        sct.compression_level = 9 # max compression = +- 50 ko file
+        sct.compression_level = 9 # max compression = +- 50 000 bytes file
         time_stamp = datetime.today().strftime('%Y-%m-%d_%HH%M')
-        for filename in sct.save(mon=-1, output=f'./screenshots/{time_stamp}.png'): #-1 : fusion of all monitor
+        for filename in sct.save(mon=-1, output=f'./screenshots/{time_stamp}.jpg'): #-1 : fusion of all monitor
             print(filename)
 
         # filename = "./screenshots/2024-10-23_21H07.png"

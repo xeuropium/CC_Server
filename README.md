@@ -22,3 +22,10 @@ Data is send as a **Stream of bytes**, no concept of message boundaries.
 No need to establish a connection before sending data.  
 A Datagram is an independent, self-contained packet with <ins>no concept of session</ins>  
 While UDP enforces **explicit message boundaries** there is no guarantee that Datagrams will be delivered in the correct order. 
+
+### Buffer size consideration
+From what I've read, it is preferable not to send packets larger than 8192 bytes.
+The best way to send an image is to split it into multiple smaller packets and then reconstruct the final image.
+
+The header indicating the length is 4 byte (32 bits) = a max 2^32−1=4,294,967,295 Integer
+A packet sending 1024 bytes can send a max 1024 char with utf-8. 
