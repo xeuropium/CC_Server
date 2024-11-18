@@ -3,3 +3,5 @@ tests.py
 serv_setup.md
 /env
 /screenshots
+img_b64.txt
+img_b64_server.txt

