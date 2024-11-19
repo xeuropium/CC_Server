@@ -38,9 +38,10 @@ def send_data(sock: socket.socket, msg):
 
 
 def packet_crafting(msg: str):
+    HEADER = 8192
     data_size = len(msg) + 4 # Plus the header
     packets = []
-    if (data_size > 8192) :
+    if (data_size > HEADER) :
         packets = img_to_packets(msg)
     
     else :
@@ -56,19 +57,19 @@ def packet_crafting(msg: str):
 
 # REFACTOR : fusion the header part
 def img_to_packets(img_base64):
+    HEADER = 8192
     packets = []
-    string_delim = '<START' + img_base64 + 'END>'
+    string_delim = '<ST>' + img_base64 + '<ND>'
 
     chunks = textwrap.wrap(string_delim, 8188) # 8188 + 4 = 8192
     for chunk in chunks:
-        header = 8192 
-        header_encoded = header.to_bytes(4, 'little')
+        header_encoded = HEADER.to_bytes(4, 'little')
         packet = header_encoded + chunk.encode('utf-8')
         packets.append(packet)
-
     return packets
 
-def b64_to_txt(b64):
+
+def b64_to_txt(b64): # debug
     with open('img_b64.txt', 'wb') as fs:
         fs.write(b64)
 
