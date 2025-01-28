@@ -2,7 +2,7 @@ import json
 import re
 import socket
 import subprocess
-import select
+import sys
 import threading
 from datetime import datetime
 import os
@@ -10,21 +10,11 @@ import base64
 import textwrap
 import platform
 import uuid
+from utils import is_socket_closed
 
 import numpy as np
 from mss import mss # Multiple ScreenShot
 # https://docs.python.org/3/library/socketserver.html#socketserver-tcpserver-example
-
-# See the select section : https://docs.python.org/3/howto/sockets.html#socket-howto 
-def is_socket_closed(sock: socket.socket) -> bool:
-    try:
-        # Check if the socket is still open by looking at the file descriptor
-        if sock.fileno() == -1:
-            return True
-        readable, _, _ = select.select([sock], [], [], 0)
-        return readable
-    except (ValueError, OSError):
-            return True
 
 
 def send_data(sock: socket.socket, msg):
@@ -163,14 +153,26 @@ def listen_for_commands(sock : socket.socket):
 
 
 if __name__ == '__main__':
+    """ You can use the args : -ip 192.168.0.1 -port 5000 """
+    args = sys.argv[1:]
     HOST, PORT = 'localhost', 5000
+    MAX_TIMEOUT = 3
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock: # Conect with TCP
-        try: 
+    if len(args) == 4:
+        if args[0] == '-ip':
+            HOST = args[1]
+        if args[2] == '-port':
+            PORT = int(args[3])
+    print(f'Connecting to {HOST}@{PORT}')
+
+    try: 
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock: # Connect with TCP
+            sock.settimeout(MAX_TIMEOUT)
             sock.connect((HOST, PORT))
             print(f'Connected @ : {sock.getpeername()}')
             send_data(sock, 'First connection ping')
-
+            
+            sock.settimeout(None)
             sock_thread = threading.Thread(target=listen_for_commands, args=(sock,))
             sock_thread.daemon = True  # Set the thread as a daemon so it doesn't block exit
             sock_thread.start()
@@ -184,5 +186,9 @@ if __name__ == '__main__':
                 sock_thread.join()
                 # print(f"Threads : {threading.active_count()}")
 
-        except ConnectionRefusedError:
-            print('Connection refused by the host (server might be down or unreachable)')
+    except ConnectionRefusedError:
+        print('Connection refused by the host (server might be down or unreachable)')
+    except socket.gaierror as e:
+        print(f"Failed to resolve hostname {HOST}@{PORT}")
+    except socket.timeout:
+        print(f'Connection timed out {MAX_TIMEOUT}sec. The server might be unreachable.')

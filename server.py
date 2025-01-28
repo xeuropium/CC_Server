@@ -3,6 +3,8 @@ import threading
 import re
 import base64
 from datetime import datetime
+from utils import is_socket_closed
+import sys
 
 # SockerServer example used at https://docs.python.org/3/library/socketserver.html
 # Threads is used to run multiple I/O-bound tasks simultaneously, here, requests
@@ -28,6 +30,14 @@ def remove_client(clients, ip, port):
         if client.ip == ip and client.port:
             clients.remove(client)
             break
+
+def safe_print(message : str):
+    """
+    Safely print messages without interfering with the input prompt.
+    """
+    sys.stdout.write(f'\r{message}\n')
+    sys.stdout.write('\n> ')  
+    sys.stdout.flush()  
 
 # Override class socketserver.BaseRequestHandler : https://docs.python.org/3/library/socketserver.html#socketserver.BaseRequestHandler
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
@@ -91,7 +101,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 else :
                     self.data = self.request.recv(data_size - HEADER_LENGTH).strip()
                     message = self.data.decode('utf-8')
-                    print(f'{self.client_address} > ' + message)
+                    safe_print(f'{self.client_address} > ' + message)
 
                     # send alive ping back
                     if (message == 'First connection ping'):
@@ -101,14 +111,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             print('Connection was aborted by the local system')
         except ConnectionResetError :
             pass # Connection was forcibly closed by the remote host
-    
+
 
     def finish(self) :
-        print(f'\nConnection closed for: {self.client_address}')
+        safe_print(f'\nConnection closed for: {self.client_address}')
         remove_client(connected_clients, self.client_address[0], self.client_address[1])
 
-    def get_screenshot(): # Refactor : Put the screenshot part here 
-        pass
 
 # The threaded version let multiple clients connect at the same time.
 # They can both communicate in a continuous Stream
@@ -195,17 +203,19 @@ def list_clients():
             print(client)
 
 
-# REFACTOR : Verify that the socket is not closed, share the method from client
 def get_client(msg : str) :
     """ Return socket.socket object """
     
-    id = int(msg.split(' ')[1])
-    for client in connected_clients:
-        if client.id == id:
-            return client.socket
-    
-    print(f'ClientID - {id} is not is the list of connected client')
-    return None
+    try :
+        id = int(msg.split(' ')[1])
+        for client in connected_clients:
+            if client.id == id and not is_socket_closed(client.socket):
+                return client.socket
+        
+        print(f'ClientID - {id} is not is the list of connected client')
+        return None
+    except Exception:
+        print('The command format is incorrect')
 
 
 def get_info(msg):
