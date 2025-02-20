@@ -29,3 +29,6 @@ The best way to send an image is to split it into multiple smaller packets and t
 
 The header indicating the length is 4 byte (32 bits) = a max 2^32−1=4,294,967,295 Integer  
 A packet sending 1024 bytes can send a max 1024 char with utf-8. 
+
+## Wireshark investigation
+[Wireshark doc](./doc/wireshark.md)

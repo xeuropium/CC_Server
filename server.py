@@ -264,7 +264,7 @@ def b64_to_txt(b64 : bytes):
         fs.write(b64)
 
 if __name__ == '__main__':
-    HOST, PORT = 'localhost', 5000
+    HOST, PORT = '0.0.0.0', 5000
     WHITE_LIST = read_white_list()
     
     try :

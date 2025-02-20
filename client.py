@@ -11,6 +11,7 @@ import textwrap
 import platform
 import uuid
 from utils import is_socket_closed
+import argparse
 
 import numpy as np
 from mss import mss # Multiple ScreenShot
@@ -152,17 +153,23 @@ def listen_for_commands(sock : socket.socket):
         print('Connection closed')
 
 
-if __name__ == '__main__':
-    """ You can use the args : -ip 192.168.0.1 -port 5000 """
-    args = sys.argv[1:]
-    HOST, PORT = 'localhost', 5000
-    MAX_TIMEOUT = 3
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-ip', default='localhost')
+    parser.add_argument('-port', default='5000')
 
-    if len(args) == 4:
-        if args[0] == '-ip':
-            HOST = args[1]
-        if args[2] == '-port':
-            PORT = int(args[3])
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    """ 
+    You can use the args : -ip 192.168.0.1 -port 5000
+    > python ./client.py -ip 192.168.0.1
+    """
+    args=parse_args()
+
+    HOST, PORT = args.ip, int(args.port)
+    MAX_TIMEOUT = 3
     print(f'Connecting to {HOST}@{PORT}')
 
     try: 
