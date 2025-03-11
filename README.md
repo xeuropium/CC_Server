@@ -5,10 +5,20 @@ In the end, it would be interesting to capture the traffic exchanged between the
 # Concepts used  :
 
 ## Client server Architecture
-inc
+The server is hosted in the cloud. It waits for incoming client connections. Once a connection is made, it can send commands.
+
+The client (or beacon) sends an initial message to the server. If it receives the correct response, it maintains a TCP connection. At that point, it simply waits for commands, executes them, and sends the response.
 
 ## Threads and Threading 
-inc
+### Server 
+1. Handling Multiple Client Connections
+
+The `handle(self)` method in the server class is called every time a new client connects. However, because `ThreadingMixIn` is used, each call to `handle(self)` is executed in a new thread.
+
+2. Threading of the `ThreadedTCPServer`
+
+The `socketserver` runs in a separate thread.  
+The main Python thread is used for listening to operator commands.  
 
 # Stream-based Protocol (TCP) vs Datagram-based Protocol (UDP)
 ## TCP :

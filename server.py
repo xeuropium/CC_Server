@@ -4,7 +4,7 @@ import re
 import base64
 from datetime import datetime
 from utils import is_socket_closed
-import sys
+import sys, os
 
 # SockerServer example used at https://docs.python.org/3/library/socketserver.html
 # Threads is used to run multiple I/O-bound tasks simultaneously, here, requests
@@ -56,7 +56,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         # print(f'Threads alive : {threading.active_count()}') # Debug purpose
 
     def handle(self):
-        if (self.client_address[0] not in WHITE_LIST) :
+        if WHITE_LIST is not None and self.client_address[0] not in WHITE_LIST:
             print('IP not in the WhiteList')
             return
         
@@ -127,8 +127,16 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     
 
 def read_white_list():
+    if not os.path.exists('white_list.txt'):
+        with open('white_list.txt', 'w') as file:
+            pass # Creates the file if not existant
+
     with open('white_list.txt', 'r') as file:
         whitelist = {line.strip() for line in file if line.strip()}
+    
+    if not whitelist: # If the whitelist is empty, accept all IPs
+        return None  
+    
     return whitelist
 
 
